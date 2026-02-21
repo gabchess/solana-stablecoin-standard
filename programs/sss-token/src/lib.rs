@@ -44,4 +44,31 @@ pub mod sss_token {
     ) -> Result<()> {
         instructions::update_mint_allowance::handler(ctx, new_allowance)
     }
+
+    pub fn mint_tokens(ctx: Context<MintTokens>, amount: u64) -> Result<()> {
+        instructions::mint_tokens::handler(ctx, amount)
+    }
+
+    pub fn burn_tokens(ctx: Context<BurnTokens>, amount: u64) -> Result<()> {
+        instructions::burn_tokens::handler(ctx, amount)
+    }
+
+    pub fn pause(ctx: Context<Pause>) -> Result<()> {
+        instructions::pause::handler(ctx)
+    }
+
+    pub fn unpause(ctx: Context<Unpause>) -> Result<()> {
+        instructions::unpause::handler(ctx)
+    }
+
+    pub fn transfer_master_authority(ctx: Context<TransferMasterAuthority>) -> Result<()> {
+        instructions::transfer_master_authority::handler(ctx)
+    }
+
+    pub fn update_supply_cap(
+        ctx: Context<UpdateSupplyCap>,
+        new_cap: Option<u64>,
+    ) -> Result<()> {
+        instructions::update_supply_cap::handler(ctx, new_cap)
+    }
 }
