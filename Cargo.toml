@@ -2,6 +2,10 @@
 members = ["programs/*"]
 resolver = "2"
 
+[workspace.dependencies]
+# Pin blake3 to avoid edition2024 requirement
+blake3 = "=1.5.5"
+
 [profile.release]
 overflow-checks = true
 lto = "fat"

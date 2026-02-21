@@ -78,7 +78,7 @@ pub fn handler(
     let config_seeds: &[&[u8]] = &[STABLECOIN_SEED, mint_key.as_ref(), &bump_bytes];
 
     // ── Step 1: Calculate mint account size ────────────────────────────
-    // Base size for Token-2022 mint with extension headers
+    // SSS-1 has 2 extensions: MetadataPointer, MintCloseAuthority
     let extension_types = &[
         ExtensionType::MetadataPointer,
         ExtensionType::MintCloseAuthority,
@@ -87,31 +87,37 @@ pub fn handler(
         ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(extension_types)
             .map_err(|_| StablecoinError::MathOverflow)?;
 
-    // Metadata TLV entry stored at end of mint account (via MetadataPointer → self)
-    // Layout: discriminator([u8;8]) + length(u32) + content
-    // Content: update_authority(32) + mint(32) + name(4+len) + symbol(4+len) + uri(4+len) + additional_metadata(4)
-    let metadata_content_size: usize = 32 // update_authority (OptionalNonZeroPubkey)
-        + 32                              // mint (Pubkey)
-        + (4 + name.len())                // name  (borsh string)
-        + (4 + symbol.len())              // symbol (borsh string)
-        + (4 + uri.len())                 // uri (borsh string)
-        + 4; // additional_metadata (empty Vec)
-    let metadata_tlv_size: usize = 8 + 4 + metadata_content_size; // discriminator + length + data
+    // Metadata content size (spl-token-metadata-interface borsh format):
+    //   update_authority(32) + mint(32) + name(4+len) + symbol(4+len) + uri(4+len) + additional_metadata(4)
+    let metadata_content_size: usize = 32
+        + 32
+        + (4 + name.len())
+        + (4 + symbol.len())
+        + (4 + uri.len())
+        + 4;
+    // Variable-length TLV overhead: ArrayDiscriminator([u8;8]) + length(u32) = 12 bytes
+    let metadata_tlv_size: usize = 8 + 4 + metadata_content_size;
 
     let total_mint_size = base_mint_size
         .checked_add(metadata_tlv_size)
         .ok_or(StablecoinError::MathOverflow)?;
 
     let rent = &ctx.accounts.rent;
+    // Fund for the FULL size (including metadata) so realloc has enough lamports.
     let lamports = rent.minimum_balance(total_mint_size);
 
     // ── Step 2: Create mint account (Keypair signer → invoke) ──────────
+    // IMPORTANT: Use base_mint_size (fixed extensions only) as `space`.
+    // Token-2022's initialize_mint2 does an exact equality check between the
+    // calculated size (from initialized extensions) and the account's data_len().
+    // Metadata is not initialized yet, so it must NOT be included in `space`.
+    // The metadata `initialize` instruction will realloc the account to fit.
     invoke(
         &anchor_lang::solana_program::system_instruction::create_account(
             &ctx.accounts.authority.key(),
             &mint_key,
             lamports,
-            total_mint_size as u64,
+            base_mint_size as u64,
             &ctx.accounts.token_program.key(),
         ),
         &[
@@ -152,8 +158,8 @@ pub fn handler(
     let ix_init_mint = initialize_mint2(
         &ctx.accounts.token_program.key(),
         &mint_key,
-        &config_key,       // mint authority
-        Some(&config_key), // freeze authority
+        &config_key,       // mint authority = config PDA
+        Some(&config_key), // freeze authority = config PDA
         decimals,
     )?;
 
@@ -187,7 +193,7 @@ pub fn handler(
         &[config_seeds],
     )?;
 
-    // ── Step 7: Set StablecoinConfig state ─────────────────────────────
+    // ── Step 7: Set StablecoinConfig state ──────────────────────────────
     let config = &mut ctx.accounts.config;
     config.master_authority = ctx.accounts.authority.key();
     config.mint = mint_key;

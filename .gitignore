@@ -29,3 +29,4 @@ Thumbs.db
 !cli/src/**
 !backend/src/**
 !tests/**
+test-ledger/
