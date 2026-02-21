@@ -5,7 +5,7 @@ pub mod instructions;
 
 use instructions::*;
 
-declare_id!("SSSHook11111111111111111111111111111111111");
+declare_id!("F1aUaKxYyCRWJLW7oeAiHNFk2WFJhS2NTm7LdGh8zuSz");
 
 #[program]
 pub mod sss_transfer_hook {

@@ -5,8 +5,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-sss_token = "SSSToken11111111111111111111111111111111111"
-sss_transfer_hook = "SSSHook11111111111111111111111111111111111"
+sss_token = "CgvFp3RNTC9SCpbHqP3KjzRLMd1SckdoWDynqfcQDvA3"
+sss_transfer_hook = "F1aUaKxYyCRWJLW7oeAiHNFk2WFJhS2NTm7LdGh8zuSz"
 
 [registry]
 url = "https://api.apr.dev"

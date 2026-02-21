@@ -8,7 +8,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("SSSToken11111111111111111111111111111111111");
+declare_id!("CgvFp3RNTC9SCpbHqP3KjzRLMd1SckdoWDynqfcQDvA3");
 
 #[program]
 pub mod sss_token {
