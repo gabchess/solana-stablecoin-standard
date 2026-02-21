@@ -2695,6 +2695,7 @@ dependencies = [
  "anchor-spl",
  "spl-token-2022",
  "spl-token-metadata-interface 0.5.1",
+ "spl-transfer-hook-interface 0.8.2",
 ]
 
 [[package]]

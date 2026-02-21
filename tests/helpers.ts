@@ -14,6 +14,7 @@ import {
   createAssociatedTokenAccountInstruction,
 } from "@solana/spl-token";
 import { SssToken } from "../target/types/sss_token";
+import { SssTransferHook } from "../target/types/sss_transfer_hook";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -108,11 +109,15 @@ export async function createAta(
   );
 
   const tx = new anchor.web3.Transaction().add(ix);
+  let sig: string;
   if (payer) {
-    await provider.sendAndConfirm(tx, [payer]);
+    sig = await provider.sendAndConfirm(tx, [payer]);
   } else {
-    await provider.sendAndConfirm(tx);
+    sig = await provider.sendAndConfirm(tx);
   }
+
+  // Ensure account is visible at "confirmed" level before returning
+  await provider.connection.confirmTransaction(sig, "confirmed");
 
   return ata;
 }
@@ -222,4 +227,105 @@ export async function assignRole(
     .rpc();
 
   return roleConfigPda;
+}
+
+// ---------------------------------------------------------------------------
+// SSS-2 helpers
+// ---------------------------------------------------------------------------
+
+export const HOOK_PROGRAM_ID = new PublicKey(
+  "F1aUaKxYyCRWJLW7oeAiHNFk2WFJhS2NTm7LdGh8zuSz"
+);
+
+export const EXTRA_ACCOUNT_METAS_SEED = Buffer.from("extra-account-metas");
+
+export function findExtraAccountMetaListPda(
+  mint: PublicKey,
+  hookProgramId: PublicKey = HOOK_PROGRAM_ID
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [EXTRA_ACCOUNT_METAS_SEED, mint.toBuffer()],
+    hookProgramId
+  );
+}
+
+/**
+ * Initialize an SSS-2 stablecoin with all 5 Token-2022 extensions:
+ *   MetadataPointer, MintCloseAuthority, PermanentDelegate,
+ *   TransferHook, DefaultAccountState(Frozen)
+ */
+export async function initializeSss2(
+  program: Program<SssToken>,
+  authority: Keypair,
+  mint: Keypair,
+  opts: {
+    name?: string;
+    symbol?: string;
+    uri?: string;
+    decimals?: number;
+    supplyCap?: number | null;
+    hookProgramId?: PublicKey;
+  } = {}
+): Promise<{ config: PublicKey; mint: PublicKey }> {
+  const {
+    name = "Test Stablecoin",
+    symbol = "TSTB",
+    uri = "https://test.com",
+    decimals = 6,
+    supplyCap = null,
+    hookProgramId = HOOK_PROGRAM_ID,
+  } = opts;
+
+  const [configPda] = findConfigPda(mint.publicKey, program.programId);
+
+  await program.methods
+    .initializeSss2(
+      name,
+      symbol,
+      uri,
+      decimals,
+      supplyCap !== null ? new anchor.BN(supplyCap) : null,
+      hookProgramId
+    )
+    .accountsStrict({
+      authority: authority.publicKey,
+      mint: mint.publicKey,
+      config: configPda,
+      tokenProgram: TOKEN_PROGRAM,
+      systemProgram: SystemProgram.programId,
+      rent: SYSVAR_RENT_PUBKEY,
+    })
+    .signers([authority, mint])
+    .rpc();
+
+  return { config: configPda, mint: mint.publicKey };
+}
+
+/**
+ * Initialize the ExtraAccountMetaList for the transfer hook.
+ */
+export async function initializeExtraAccountMetaList(
+  hookProgram: Program<SssTransferHook>,
+  sssTokenProgram: Program<SssToken>,
+  payer: Keypair,
+  mint: PublicKey
+): Promise<PublicKey> {
+  const [extraAccountMetaList] = findExtraAccountMetaListPda(
+    mint,
+    hookProgram.programId
+  );
+
+  await hookProgram.methods
+    .initializeExtraAccountMetaList()
+    .accountsStrict({
+      payer: payer.publicKey,
+      extraAccountMetaList,
+      mint,
+      sssTokenProgram: sssTokenProgram.programId,
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([payer])
+    .rpc();
+
+  return extraAccountMetaList;
 }

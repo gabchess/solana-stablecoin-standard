@@ -68,7 +68,17 @@ pub fn handler<'info>(
         return Err(TransferHookError::TransfersPaused.into());
     }
 
-    // ── Step 2: Check sender blacklist ──────────────────────────────────
+    // ── Step 2: Check for privileged transfer (permanent delegate) ──────
+    // When the config PDA (permanent delegate) initiates a transfer — e.g.
+    // during a seize operation — we skip blacklist checks.  The owner/authority
+    // account at index 3 will equal the config PDA at index 6 in that case.
+    let owner_info = &accounts[3];
+    if owner_info.key == config_info.key {
+        msg!("Transfer hook: privileged transfer by permanent delegate — approved");
+        return Ok(());
+    }
+
+    // ── Step 3: Check sender blacklist ──────────────────────────────────
     // If the BlacklistEntry PDA exists (has data), the sender is blacklisted.
     // Token-2022 resolves the PDA address from ExtraAccountMetaList seeds.
     // If the PDA doesn't exist on-chain, the account will have data_len == 0.
@@ -77,7 +87,7 @@ pub fn handler<'info>(
         return Err(TransferHookError::SenderBlacklisted.into());
     }
 
-    // ── Step 3: Check receiver blacklist ────────────────────────────────
+    // ── Step 4: Check receiver blacklist ────────────────────────────────
     if receiver_blacklist_info.data_len() > 0 {
         msg!("Transfer hook: receiver is blacklisted");
         return Err(TransferHookError::ReceiverBlacklisted.into());

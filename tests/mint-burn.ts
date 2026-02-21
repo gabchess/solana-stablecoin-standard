@@ -278,7 +278,7 @@ describe("Mint and Burn", () => {
     );
     const before = Number(balanceBefore.amount);
 
-    await program.methods
+    const burnSig = await program.methods
       .burnTokens(new anchor.BN(500_000))
       .accountsStrict({
         authority: recipientKeypair.publicKey,
@@ -290,6 +290,8 @@ describe("Mint and Burn", () => {
       })
       .signers([recipientKeypair])
       .rpc();
+
+    await provider.connection.confirmTransaction(burnSig, "confirmed");
 
     const balanceAfter = await getAccount(
       provider.connection,

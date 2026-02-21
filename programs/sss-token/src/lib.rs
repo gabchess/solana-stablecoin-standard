@@ -106,7 +106,7 @@ pub mod sss_token {
         instructions::approve_account::handler(ctx)
     }
 
-    pub fn seize(ctx: Context<Seize>, amount: u64) -> Result<()> {
+    pub fn seize<'info>(ctx: Context<'_, '_, 'info, 'info, Seize<'info>>, amount: u64) -> Result<()> {
         instructions::seize::handler(ctx, amount)
     }
 }

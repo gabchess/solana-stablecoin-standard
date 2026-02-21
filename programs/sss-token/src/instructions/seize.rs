@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::instruction::AccountMeta;
 use anchor_lang::solana_program::program::invoke_signed;
 use anchor_spl::token_2022::Token2022;
 use anchor_spl::token_interface::{Mint, TokenAccount};
@@ -94,7 +95,7 @@ pub struct Seize<'info> {
 // Handler
 // ---------------------------------------------------------------------------
 
-pub fn handler(ctx: Context<Seize>, amount: u64) -> Result<()> {
+pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, Seize<'info>>, amount: u64) -> Result<()> {
     require!(amount > 0, StablecoinError::ZeroAmount);
 
     let config = &ctx.accounts.config;
@@ -131,7 +132,13 @@ pub fn handler(ctx: Context<Seize>, amount: u64) -> Result<()> {
     // Config PDA = permanent delegate (set immutably at mint init).
     // The permanent delegate can transfer tokens from any account without
     // the account owner's signature.
-    let ix_transfer = transfer_checked(
+    //
+    // CRITICAL: Because the mint has a TransferHook extension, Token-2022
+    // will CPI into the hook program during transfer_checked.  The hook
+    // needs extra accounts (ExtraAccountMetaList + resolved PDAs).
+    // These must be provided as remaining_accounts by the caller and
+    // forwarded here.
+    let mut ix_transfer = transfer_checked(
         &ctx.accounts.token_program.key(),
         &ctx.accounts.from_ata.key(),
         &ctx.accounts.mint.key(),
@@ -142,14 +149,32 @@ pub fn handler(ctx: Context<Seize>, amount: u64) -> Result<()> {
         decimals,
     )?;
 
+    // Add transfer hook extra accounts to the instruction's account_metas.
+    // Token-2022 only processes accounts listed in the instruction — passing
+    // them only as AccountInfos is not enough.  The extra accounts are:
+    // ExtraAccountMetaList, hook program, sss-token program, config, sender BL, receiver BL.
+    for remaining in ctx.remaining_accounts.iter() {
+        ix_transfer.accounts.push(AccountMeta {
+            pubkey: *remaining.key,
+            is_signer: remaining.is_signer,
+            is_writable: remaining.is_writable,
+        });
+    }
+
+    // Build account infos: standard transfer accounts + hook extra accounts
+    let mut transfer_account_infos = vec![
+        ctx.accounts.from_ata.to_account_info(),
+        ctx.accounts.mint.to_account_info(),
+        ctx.accounts.treasury_ata.to_account_info(),
+        ctx.accounts.config.to_account_info(),
+    ];
+    for remaining in ctx.remaining_accounts.iter() {
+        transfer_account_infos.push(remaining.clone());
+    }
+
     invoke_signed(
         &ix_transfer,
-        &[
-            ctx.accounts.from_ata.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.treasury_ata.to_account_info(),
-            ctx.accounts.config.to_account_info(),
-        ],
+        &transfer_account_infos,
         &[config_seeds],
     )?;
 
