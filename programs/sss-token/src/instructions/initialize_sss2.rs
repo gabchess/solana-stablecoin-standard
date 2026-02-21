@@ -1,1 +1,264 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program::invoke;
+use anchor_lang::solana_program::program::invoke_signed;
+use anchor_spl::token_2022::{
+    spl_token_2022::{
+        extension::ExtensionType,
+        instruction::{initialize_mint2, initialize_mint_close_authority, initialize_permanent_delegate},
+    },
+    Token2022,
+};
+use spl_token_2022::extension::default_account_state::instruction::initialize_default_account_state;
+use spl_token_2022::extension::metadata_pointer::instruction::initialize as initialize_metadata_pointer;
+use spl_token_2022::extension::transfer_hook::instruction::initialize as initialize_transfer_hook;
+use spl_token_2022::state::AccountState;
+use spl_token_metadata_interface::instruction::initialize as initialize_token_metadata;
+
+use crate::{
+    constants::{MAX_NAME_LEN, MAX_SYMBOL_LEN, MAX_URI_LEN, STABLECOIN_SEED},
+    error::StablecoinError,
+    events::StablecoinInitialized,
+    state::StablecoinConfig,
+};
+
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+
+#[derive(Accounts)]
+pub struct InitializeSss2<'info> {
+    /// Master authority — deployer and initial admin of the stablecoin.
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    /// The Token-2022 mint account. Caller generates a fresh Keypair and signs
+    /// the transaction with it. We create the account via CPI inside the handler.
+    /// CHECK: Validated by create_account + Token-2022 init CPIs.
+    #[account(mut)]
+    pub mint: Signer<'info>,
+
+    /// StablecoinConfig PDA derived from ["stablecoin", mint].
+    #[account(
+        init,
+        payer = authority,
+        space = StablecoinConfig::LEN,
+        seeds = [STABLECOIN_SEED, mint.key().as_ref()],
+        bump,
+    )]
+    pub config: Account<'info, StablecoinConfig>,
+
+    pub token_program: Program<'info, Token2022>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
+
+pub fn handler(
+    ctx: Context<InitializeSss2>,
+    name: String,
+    symbol: String,
+    uri: String,
+    decimals: u8,
+    supply_cap: Option<u64>,
+    hook_program_id: Pubkey,
+) -> Result<()> {
+    // ── Validate metadata lengths ──────────────────────────────────────
+    require!(name.len() <= MAX_NAME_LEN, StablecoinError::NameTooLong);
+    require!(
+        symbol.len() <= MAX_SYMBOL_LEN,
+        StablecoinError::SymbolTooLong
+    );
+    require!(uri.len() <= MAX_URI_LEN, StablecoinError::UriTooLong);
+
+    let mint_key = ctx.accounts.mint.key();
+    let config_key = ctx.accounts.config.key();
+    let config_bump = ctx.bumps.config;
+
+    // Config PDA signer seeds — needed for metadata init (mint_authority = config PDA)
+    let bump_bytes = [config_bump];
+    let config_seeds: &[&[u8]] = &[STABLECOIN_SEED, mint_key.as_ref(), &bump_bytes];
+
+    // ── Step 1: Calculate mint account size ────────────────────────────
+    // SSS-2 has 5 extensions:
+    //   MetadataPointer, MintCloseAuthority, PermanentDelegate,
+    //   TransferHook, DefaultAccountState
+    let extension_types = &[
+        ExtensionType::MetadataPointer,
+        ExtensionType::MintCloseAuthority,
+        ExtensionType::PermanentDelegate,
+        ExtensionType::TransferHook,
+        ExtensionType::DefaultAccountState,
+    ];
+    let base_mint_size =
+        ExtensionType::try_calculate_account_len::<spl_token_2022::state::Mint>(extension_types)
+            .map_err(|_| StablecoinError::MathOverflow)?;
+
+    // Metadata TLV entry stored at end of mint account (via MetadataPointer → self)
+    // Layout: discriminator([u8;8]) + length(u32) + content
+    // Content: update_authority(32) + mint(32) + name(4+len) + symbol(4+len) + uri(4+len) + additional_metadata(4)
+    let metadata_content_size: usize = 32 // update_authority (OptionalNonZeroPubkey)
+        + 32                              // mint (Pubkey)
+        + (4 + name.len())                // name  (borsh string)
+        + (4 + symbol.len())              // symbol (borsh string)
+        + (4 + uri.len())                 // uri (borsh string)
+        + 4; // additional_metadata (empty Vec)
+    let metadata_tlv_size: usize = 8 + 4 + metadata_content_size; // discriminator + length + data
+
+    let total_mint_size = base_mint_size
+        .checked_add(metadata_tlv_size)
+        .ok_or(StablecoinError::MathOverflow)?;
+
+    let rent = &ctx.accounts.rent;
+    let lamports = rent.minimum_balance(total_mint_size);
+
+    // ── Step 2: Create mint account (Keypair signer → invoke) ──────────
+    invoke(
+        &anchor_lang::solana_program::system_instruction::create_account(
+            &ctx.accounts.authority.key(),
+            &mint_key,
+            lamports,
+            total_mint_size as u64,
+            &ctx.accounts.token_program.key(),
+        ),
+        &[
+            ctx.accounts.authority.to_account_info(),
+            ctx.accounts.mint.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        ],
+    )?;
+
+    // ── Step 3: Initialize MetadataPointer extension (BEFORE mint init) ─
+    // Points to self: metadata lives inside the mint account.
+    let ix_metadata_ptr = initialize_metadata_pointer(
+        &ctx.accounts.token_program.key(),
+        &mint_key,
+        Some(config_key),  // authority = config PDA
+        Some(mint_key),    // metadata_address = mint itself
+    )?;
+
+    invoke(
+        &ix_metadata_ptr,
+        &[ctx.accounts.mint.to_account_info()],
+    )?;
+
+    // ── Step 4: Initialize MintCloseAuthority extension (BEFORE mint init) ─
+    let ix_close_auth = initialize_mint_close_authority(
+        &ctx.accounts.token_program.key(),
+        &mint_key,
+        Some(&config_key), // close_authority = config PDA
+    )?;
+
+    invoke(
+        &ix_close_auth,
+        &[ctx.accounts.mint.to_account_info()],
+    )?;
+
+    // ── Step 5: Initialize PermanentDelegate extension (BEFORE mint init) ─
+    // Config PDA = permanent delegate — enables seizure of tokens.
+    // IMMUTABLE after mint init — cannot be changed later.
+    let ix_perm_delegate = initialize_permanent_delegate(
+        &ctx.accounts.token_program.key(),
+        &mint_key,
+        &config_key, // delegate = config PDA
+    )?;
+
+    invoke(
+        &ix_perm_delegate,
+        &[ctx.accounts.mint.to_account_info()],
+    )?;
+
+    // ── Step 6: Initialize TransferHook extension (BEFORE mint init) ───
+    // Points to the sss-transfer-hook program for blacklist enforcement.
+    let ix_transfer_hook = initialize_transfer_hook(
+        &ctx.accounts.token_program.key(),
+        &mint_key,
+        Some(config_key),       // authority = config PDA (can update hook program later)
+        Some(hook_program_id),  // transfer_hook_program_id
+    )?;
+
+    invoke(
+        &ix_transfer_hook,
+        &[ctx.accounts.mint.to_account_info()],
+    )?;
+
+    // ── Step 7: Initialize DefaultAccountState extension (BEFORE mint init) ─
+    // All new token accounts start FROZEN — must be thawed (approved) via
+    // approve_account before tokens can be sent to them. KYC/compliance gate.
+    let ix_default_state = initialize_default_account_state(
+        &ctx.accounts.token_program.key(),
+        &mint_key,
+        &AccountState::Frozen,
+    )?;
+
+    invoke(
+        &ix_default_state,
+        &[ctx.accounts.mint.to_account_info()],
+    )?;
+
+    // ── Step 8: Initialize Mint2 ──────────────────────────────────────
+    // config PDA = mint_authority + freeze_authority
+    let ix_init_mint = initialize_mint2(
+        &ctx.accounts.token_program.key(),
+        &mint_key,
+        &config_key,       // mint authority
+        Some(&config_key), // freeze authority
+        decimals,
+    )?;
+
+    invoke(
+        &ix_init_mint,
+        &[ctx.accounts.mint.to_account_info()],
+    )?;
+
+    // ── Step 9: Initialize Metadata (AFTER mint init) ─────────────────
+    // Token-2022 implements the spl-token-metadata-interface natively.
+    // mint_authority (config PDA) must sign → invoke_signed.
+    let ix_init_metadata = initialize_token_metadata(
+        &ctx.accounts.token_program.key(), // Token-2022 is the metadata program
+        &mint_key,                          // metadata account = mint (via MetadataPointer)
+        &config_key,                        // update authority = config PDA
+        &mint_key,                          // mint
+        &config_key,                        // mint authority = config PDA (signer)
+        name.clone(),
+        symbol.clone(),
+        uri.clone(),
+    );
+
+    invoke_signed(
+        &ix_init_metadata,
+        &[
+            ctx.accounts.mint.to_account_info(),   // metadata
+            ctx.accounts.config.to_account_info(),  // update authority
+            ctx.accounts.mint.to_account_info(),   // mint
+            ctx.accounts.config.to_account_info(),  // mint authority (signer)
+        ],
+        &[config_seeds],
+    )?;
+
+    // ── Step 10: Set StablecoinConfig state ──────────────────────────────
+    let config = &mut ctx.accounts.config;
+    config.master_authority = ctx.accounts.authority.key();
+    config.mint = mint_key;
+    config.preset = 2;
+    config.paused = false;
+    config.supply_cap = supply_cap;
+    config.transfer_hook_program = hook_program_id;
+    config.decimals = decimals;
+    config.bump = config_bump;
+    config._reserved = [0u8; 64];
+
+    // ── Step 11: Emit event ─────────────────────────────────────────────
+    emit!(StablecoinInitialized {
+        config: config.key(),
+        authority: config.master_authority,
+        mint: config.mint,
+        preset: 2,
+    });
+
+    msg!("SSS-2 stablecoin initialized: {} ({})", name, symbol);
+
+    Ok(())
+}

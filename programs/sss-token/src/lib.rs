@@ -71,4 +71,42 @@ pub mod sss_token {
     ) -> Result<()> {
         instructions::update_supply_cap::handler(ctx, new_cap)
     }
+
+    // ── SSS-2 instructions ──────────────────────────────────────────────
+
+    pub fn initialize_sss2(
+        ctx: Context<InitializeSss2>,
+        name: String,
+        symbol: String,
+        uri: String,
+        decimals: u8,
+        supply_cap: Option<u64>,
+        hook_program_id: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_sss2::handler(
+            ctx,
+            name,
+            symbol,
+            uri,
+            decimals,
+            supply_cap,
+            hook_program_id,
+        )
+    }
+
+    pub fn blacklist(ctx: Context<Blacklist>, wallet: Pubkey) -> Result<()> {
+        instructions::blacklist::handler(ctx, wallet)
+    }
+
+    pub fn unblacklist(ctx: Context<Unblacklist>) -> Result<()> {
+        instructions::unblacklist::handler(ctx)
+    }
+
+    pub fn approve_account(ctx: Context<ApproveAccount>) -> Result<()> {
+        instructions::approve_account::handler(ctx)
+    }
+
+    pub fn seize(ctx: Context<Seize>, amount: u64) -> Result<()> {
+        instructions::seize::handler(ctx, amount)
+    }
 }
