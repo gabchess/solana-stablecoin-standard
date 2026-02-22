@@ -8,9 +8,12 @@ import {
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
 import * as fs from "fs";
-import * as path from "path";
 
 import { SSS_TOKEN_PROGRAM_ID, SSS_TRANSFER_HOOK_PROGRAM_ID } from "@stbr/sss-token";
+
+// Bundled IDLs — no filesystem lookup required
+import tokenIdl from "./idl/sss_token.json";
+import hookIdl from "./idl/sss_transfer_hook.json";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -40,41 +43,6 @@ export function loadKeypair(keypairPath: string): Keypair {
 }
 
 // ---------------------------------------------------------------------------
-// IDL loading
-// ---------------------------------------------------------------------------
-
-/**
- * Locate and parse an IDL JSON file from the project's `target/idl/` directory.
- *
- * Walks up from `__dirname` to find the project root (where `target/` lives).
- */
-function findProjectRoot(): string {
-  let dir = __dirname;
-  for (let i = 0; i < 10; i++) {
-    if (fs.existsSync(path.join(dir, "target", "idl"))) {
-      return dir;
-    }
-    dir = path.dirname(dir);
-  }
-  console.error(
-    "\n  ERROR: Could not find project root (no target/idl/ directory).",
-  );
-  console.error("  Run 'anchor build' first.\n");
-  process.exit(1);
-}
-
-function loadIdl(name: string): any {
-  const root = findProjectRoot();
-  const idlPath = path.join(root, "target", "idl", `${name}.json`);
-  if (!fs.existsSync(idlPath)) {
-    console.error(`\n  ERROR: IDL not found at ${idlPath}`);
-    console.error("  Run 'anchor build' first.\n");
-    process.exit(1);
-  }
-  return JSON.parse(fs.readFileSync(idlPath, "utf-8"));
-}
-
-// ---------------------------------------------------------------------------
 // Setup — connection, provider, programs
 // ---------------------------------------------------------------------------
 
@@ -92,6 +60,7 @@ export interface CliContext {
 export function setupContext(opts: {
   url?: string;
   keypair?: string;
+  hookProgramId?: PublicKey;
 }): CliContext {
   const rpcUrl = opts.url || process.env.RPC_URL || DEFAULT_RPC_URL;
   const keypairPath = opts.keypair || process.env.ANCHOR_WALLET || DEFAULT_KEYPAIR_PATH;
@@ -105,11 +74,17 @@ export function setupContext(opts: {
     preflightCommitment: "confirmed",
   });
 
-  const tokenIdl = loadIdl("sss_token");
-  const hookIdl = loadIdl("sss_transfer_hook");
+  // Clone bundled IDLs to avoid mutating the shared import
+  const tIdl = { ...tokenIdl } as any;
+  const hIdl = { ...hookIdl } as any;
 
-  const program = new Program(tokenIdl, provider);
-  const hookProgram = new Program(hookIdl, provider);
+  const program = new Program(tIdl, provider);
+
+  // If user supplies a hook program ID, override the IDL-embedded address
+  if (opts.hookProgramId) {
+    hIdl.address = opts.hookProgramId.toBase58();
+  }
+  const hookProgram = new Program(hIdl, provider);
 
   return { connection, wallet, provider, program, hookProgram };
 }

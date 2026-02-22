@@ -43,11 +43,23 @@ pub fn handler<'info>(
     }
 
     // Account references
+    let sss_token_program_info = &accounts[5];
     let config_info = &accounts[6];
     let sender_blacklist_info = &accounts[7];
     let receiver_blacklist_info = &accounts[8];
 
-    // ── Step 1: Check paused state ──────────────────────────────────────
+    // ── Anchor discriminators (sha256("account:<Name>")[..8]) ────────────
+    const CONFIG_DISCRIMINATOR: [u8; 8] = [127, 25, 244, 213, 1, 192, 101, 6];
+    const BLACKLIST_DISCRIMINATOR: [u8; 8] = [218, 179, 231, 40, 141, 25, 168, 189];
+
+    // ── Step 1: Validate config account owner + discriminator ────────────
+    // The config PDA must be owned by the sss-token program and carry the
+    // correct Anchor discriminator to prevent spoofed account injection.
+    if config_info.owner != sss_token_program_info.key {
+        msg!("Transfer hook: config account owner mismatch");
+        return Err(ProgramError::InvalidAccountOwner.into());
+    }
+
     // Raw byte read of StablecoinConfig (Anchor account with 8-byte discriminator).
     //
     // Full byte offset layout of StablecoinConfig:
@@ -73,6 +85,11 @@ pub fn handler<'info>(
         return Err(ProgramError::InvalidAccountData.into());
     }
 
+    if config_data[..8] != CONFIG_DISCRIMINATOR {
+        msg!("Transfer hook: config account discriminator mismatch");
+        return Err(ProgramError::InvalidAccountData.into());
+    }
+
     let paused = config_data[73];
     if paused != 0 {
         msg!("Transfer hook: transfers are paused");
@@ -94,12 +111,31 @@ pub fn handler<'info>(
     // Token-2022 resolves the PDA address from ExtraAccountMetaList seeds.
     // If the PDA doesn't exist on-chain, the account will have data_len == 0.
     if sender_blacklist_info.data_len() > 0 {
+        // Validate owner + discriminator to prevent spoofed blacklist accounts
+        if sender_blacklist_info.owner != sss_token_program_info.key {
+            msg!("Transfer hook: sender blacklist account owner mismatch");
+            return Err(ProgramError::InvalidAccountOwner.into());
+        }
+        let sender_bl_data = sender_blacklist_info.try_borrow_data()?;
+        if sender_bl_data.len() < 8 || sender_bl_data[..8] != BLACKLIST_DISCRIMINATOR {
+            msg!("Transfer hook: sender blacklist discriminator mismatch");
+            return Err(ProgramError::InvalidAccountData.into());
+        }
         msg!("Transfer hook: sender is blacklisted");
         return Err(TransferHookError::SenderBlacklisted.into());
     }
 
     // ── Step 4: Check receiver blacklist ────────────────────────────────
     if receiver_blacklist_info.data_len() > 0 {
+        if receiver_blacklist_info.owner != sss_token_program_info.key {
+            msg!("Transfer hook: receiver blacklist account owner mismatch");
+            return Err(ProgramError::InvalidAccountOwner.into());
+        }
+        let receiver_bl_data = receiver_blacklist_info.try_borrow_data()?;
+        if receiver_bl_data.len() < 8 || receiver_bl_data[..8] != BLACKLIST_DISCRIMINATOR {
+            msg!("Transfer hook: receiver blacklist discriminator mismatch");
+            return Err(ProgramError::InvalidAccountData.into());
+        }
         msg!("Transfer hook: receiver is blacklisted");
         return Err(TransferHookError::ReceiverBlacklisted.into());
     }

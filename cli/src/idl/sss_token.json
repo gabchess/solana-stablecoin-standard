@@ -1,0 +1,2080 @@
+{
+  "address": "CgvFp3RNTC9SCpbHqP3KjzRLMd1SckdoWDynqfcQDvA3",
+  "metadata": {
+    "name": "sss_token",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Solana Stablecoin Standard — Token Program"
+  },
+  "instructions": [
+    {
+      "name": "accept_master_authority",
+      "discriminator": [
+        0,
+        0,
+        28,
+        60,
+        116,
+        59,
+        99,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "new_authority",
+          "docs": [
+            "The pending new authority — must sign to accept."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — master_authority will be updated."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "approve_account",
+      "discriminator": [
+        53,
+        151,
+        52,
+        252,
+        172,
+        189,
+        4,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "blacklister",
+          "docs": [
+            "Blacklister authority — must hold the Blacklister role."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — must be SSS-2 preset."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Blacklister's RoleConfig — validates Blacklister role and holder."
+          ]
+        },
+        {
+          "name": "wallet_token_account",
+          "docs": [
+            "The wallet's token account to thaw (approve)."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The stablecoin mint."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "assign_role",
+      "discriminator": [
+        255,
+        174,
+        125,
+        180,
+        203,
+        155,
+        202,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Master authority — only the master can assign roles."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig for this stablecoin."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "RoleConfig PDA — created here.",
+            "Seeds: [\"role\", config, role_u8, holder]"
+          ],
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "role",
+          "type": "u8"
+        },
+        {
+          "name": "holder",
+          "type": "pubkey"
+        },
+        {
+          "name": "mint_allowance",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "blacklist",
+      "discriminator": [
+        26,
+        247,
+        117,
+        39,
+        228,
+        75,
+        162,
+        78
+      ],
+      "accounts": [
+        {
+          "name": "blacklister",
+          "docs": [
+            "Blacklister authority — must hold the Blacklister role."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — must be SSS-2 preset and not paused."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Blacklister's RoleConfig — validates Blacklister role and holder."
+          ]
+        },
+        {
+          "name": "blacklist_entry",
+          "docs": [
+            "BlacklistEntry PDA — created to mark the wallet as blacklisted."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "arg",
+                "path": "wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet_token_account",
+          "docs": [
+            "The wallet's token account to freeze."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The stablecoin mint."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "wallet",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "burn_tokens",
+      "discriminator": [
+        76,
+        15,
+        51,
+        254,
+        229,
+        215,
+        121,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Authority — must be Burner role OR the from_ata owner (self-burn)."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — checked not paused."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Optional Burner RoleConfig — if authority is not the token owner,",
+            "they must present a valid Burner role to authorize the burn."
+          ],
+          "optional": true
+        },
+        {
+          "name": "from_ata",
+          "docs": [
+            "Token account to burn from."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The stablecoin mint."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize_sss1",
+      "discriminator": [
+        228,
+        216,
+        212,
+        175,
+        226,
+        214,
+        48,
+        59
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Master authority — deployer and initial admin of the stablecoin."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The Token-2022 mint account. Caller generates a fresh Keypair and signs",
+            "the transaction with it. We create the account via CPI inside the handler."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig PDA derived from [\"stablecoin\", mint]."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "uri",
+          "type": "string"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
+        },
+        {
+          "name": "supply_cap",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_sss2",
+      "discriminator": [
+        55,
+        253,
+        209,
+        103,
+        146,
+        222,
+        48,
+        2
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Master authority — deployer and initial admin of the stablecoin."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The Token-2022 mint account. Caller generates a fresh Keypair and signs",
+            "the transaction with it. We create the account via CPI inside the handler."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig PDA derived from [\"stablecoin\", mint]."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "uri",
+          "type": "string"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
+        },
+        {
+          "name": "supply_cap",
+          "type": {
+            "option": "u64"
+          }
+        },
+        {
+          "name": "hook_program_id",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "mint_tokens",
+      "discriminator": [
+        59,
+        132,
+        24,
+        246,
+        122,
+        39,
+        8,
+        243
+      ],
+      "accounts": [
+        {
+          "name": "minter",
+          "docs": [
+            "The minter — must hold the Minter role."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — checked not paused, supply cap enforced."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Minter's RoleConfig — validates Minter role and holder."
+          ],
+          "writable": true
+        },
+        {
+          "name": "destination",
+          "docs": [
+            "Destination token account — must already exist."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The stablecoin mint."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "pause",
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Authority — must be master_authority OR have Pauser role."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — will be set to paused."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Optional Pauser RoleConfig — required if authority is not master."
+          ],
+          "optional": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_role",
+      "discriminator": [
+        179,
+        232,
+        2,
+        180,
+        48,
+        227,
+        82,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Master authority — only the master can revoke roles."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig for this stablecoin."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "RoleConfig PDA — closed here, lamports returned to authority."
+          ],
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "seize",
+      "discriminator": [
+        129,
+        159,
+        143,
+        31,
+        161,
+        224,
+        241,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "seizer",
+          "docs": [
+            "Seizer authority — must hold the Seizer role."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — must be SSS-2 preset and not paused."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Seizer's RoleConfig — validates Seizer role and holder."
+          ]
+        },
+        {
+          "name": "blacklist_entry",
+          "docs": [
+            "BlacklistEntry — proves the source wallet is blacklisted."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "blacklist_entry.wallet",
+                "account": "BlacklistEntry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "from_ata",
+          "docs": [
+            "Source token account (blacklisted wallet's ATA) — tokens are seized from here."
+          ],
+          "writable": true
+        },
+        {
+          "name": "treasury_ata",
+          "docs": [
+            "Treasury token account — seized tokens go here."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The stablecoin mint."
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "transfer_master_authority",
+      "discriminator": [
+        181,
+        194,
+        193,
+        27,
+        124,
+        201,
+        126,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Current master authority — must sign to initiate transfer."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — pending_master_authority will be set."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "new_authority",
+          "docs": [
+            "The proposed new master authority."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "unblacklist",
+      "discriminator": [
+        4,
+        50,
+        22,
+        69,
+        161,
+        91,
+        80,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "blacklister",
+          "docs": [
+            "Blacklister authority — must hold the Blacklister role."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — must be SSS-2 preset and not paused."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Blacklister's RoleConfig — validates Blacklister role and holder."
+          ]
+        },
+        {
+          "name": "blacklist_entry",
+          "docs": [
+            "BlacklistEntry PDA — will be closed (rent returned to blacklister)."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  108,
+                  105,
+                  115,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "account",
+                "path": "blacklist_entry.wallet",
+                "account": "BlacklistEntry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "wallet_token_account",
+          "docs": [
+            "The wallet's token account to thaw."
+          ],
+          "writable": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The stablecoin mint."
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "unpause",
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Authority — must be master_authority OR have Pauser role."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — will be set to unpaused."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "Optional Pauser RoleConfig — required if authority is not master."
+          ],
+          "optional": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_mint_allowance",
+      "discriminator": [
+        156,
+        87,
+        182,
+        187,
+        46,
+        162,
+        253,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Master authority — only the master can update allowances."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig for this stablecoin."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "role_config",
+          "docs": [
+            "The Minter's RoleConfig PDA — must be a Minter role."
+          ],
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "new_allowance",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_supply_cap",
+      "discriminator": [
+        9,
+        215,
+        52,
+        77,
+        1,
+        9,
+        162,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Master authority — only the master can update supply cap."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig — supply_cap will be updated."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  97,
+                  98,
+                  108,
+                  101,
+                  99,
+                  111,
+                  105,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.mint",
+                "account": "StablecoinConfig"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The stablecoin mint — used to validate current supply against new cap."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_cap",
+          "type": {
+            "option": "u64"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "BlacklistEntry",
+      "discriminator": [
+        218,
+        179,
+        231,
+        40,
+        141,
+        25,
+        168,
+        189
+      ]
+    },
+    {
+      "name": "RoleConfig",
+      "discriminator": [
+        60,
+        138,
+        76,
+        113,
+        196,
+        104,
+        162,
+        73
+      ]
+    },
+    {
+      "name": "StablecoinConfig",
+      "discriminator": [
+        127,
+        25,
+        244,
+        213,
+        1,
+        192,
+        101,
+        6
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "AccountApproved",
+      "discriminator": [
+        211,
+        205,
+        153,
+        132,
+        255,
+        152,
+        47,
+        81
+      ]
+    },
+    {
+      "name": "MasterAuthorityTransferred",
+      "discriminator": [
+        120,
+        129,
+        141,
+        80,
+        5,
+        112,
+        87,
+        238
+      ]
+    },
+    {
+      "name": "MintAllowanceUpdated",
+      "discriminator": [
+        65,
+        209,
+        244,
+        218,
+        208,
+        100,
+        27,
+        240
+      ]
+    },
+    {
+      "name": "RoleAssigned",
+      "discriminator": [
+        15,
+        207,
+        225,
+        171,
+        169,
+        117,
+        98,
+        131
+      ]
+    },
+    {
+      "name": "RoleRevoked",
+      "discriminator": [
+        167,
+        183,
+        52,
+        229,
+        126,
+        206,
+        62,
+        61
+      ]
+    },
+    {
+      "name": "StablecoinInitialized",
+      "discriminator": [
+        238,
+        217,
+        135,
+        14,
+        147,
+        33,
+        221,
+        169
+      ]
+    },
+    {
+      "name": "StablecoinPaused",
+      "discriminator": [
+        72,
+        123,
+        16,
+        187,
+        50,
+        214,
+        82,
+        198
+      ]
+    },
+    {
+      "name": "StablecoinUnpaused",
+      "discriminator": [
+        183,
+        80,
+        65,
+        60,
+        128,
+        109,
+        155,
+        155
+      ]
+    },
+    {
+      "name": "SupplyCapUpdated",
+      "discriminator": [
+        162,
+        231,
+        73,
+        4,
+        93,
+        188,
+        91,
+        148
+      ]
+    },
+    {
+      "name": "TokensBurned",
+      "discriminator": [
+        230,
+        255,
+        34,
+        113,
+        226,
+        53,
+        227,
+        9
+      ]
+    },
+    {
+      "name": "TokensMinted",
+      "discriminator": [
+        207,
+        212,
+        128,
+        194,
+        175,
+        54,
+        64,
+        24
+      ]
+    },
+    {
+      "name": "TokensSeized",
+      "discriminator": [
+        51,
+        129,
+        131,
+        114,
+        206,
+        234,
+        140,
+        122
+      ]
+    },
+    {
+      "name": "WalletBlacklisted",
+      "discriminator": [
+        110,
+        134,
+        244,
+        48,
+        29,
+        245,
+        216,
+        45
+      ]
+    },
+    {
+      "name": "WalletUnblacklisted",
+      "discriminator": [
+        175,
+        77,
+        148,
+        136,
+        175,
+        126,
+        233,
+        42
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized - caller lacks required authority or role"
+    },
+    {
+      "code": 6001,
+      "name": "Paused",
+      "msg": "Stablecoin is paused"
+    },
+    {
+      "code": 6002,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6003,
+      "name": "AllowanceExceeded",
+      "msg": "Mint allowance exceeded"
+    },
+    {
+      "code": 6004,
+      "name": "SupplyCapExceeded",
+      "msg": "Supply cap would be exceeded"
+    },
+    {
+      "code": 6005,
+      "name": "Sss2Required",
+      "msg": "This operation requires SSS-2 preset"
+    },
+    {
+      "code": 6006,
+      "name": "WrongRole",
+      "msg": "Invalid role for this operation"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidRoleConfig",
+      "msg": "Role config does not belong to this stablecoin"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidMint",
+      "msg": "Invalid mint for this stablecoin config"
+    },
+    {
+      "code": 6009,
+      "name": "NameTooLong",
+      "msg": "Name too long (max 32 characters)"
+    },
+    {
+      "code": 6010,
+      "name": "SymbolTooLong",
+      "msg": "Symbol too long (max 10 characters)"
+    },
+    {
+      "code": 6011,
+      "name": "UriTooLong",
+      "msg": "URI too long (max 200 characters)"
+    },
+    {
+      "code": 6012,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "AccountApproved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "blacklister",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BlacklistEntry",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "docs": [
+              "Parent StablecoinConfig"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "docs": [
+              "The blacklisted wallet address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MasterAuthorityTransferred",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAllowanceUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_allowance",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "new_allowance",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoleAssigned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "role",
+            "type": "u8"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_allowance",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoleConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "docs": [
+              "Parent StablecoinConfig this role belongs to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "role",
+            "docs": [
+              "The role type (Role enum as u8)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "holder",
+            "docs": [
+              "Wallet that holds this role"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_allowance",
+            "docs": [
+              "Minting allowance (only meaningful for Minter role, None = unlimited)"
+            ],
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RoleRevoked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "role",
+            "type": "u8"
+          },
+          {
+            "name": "holder",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "master_authority",
+            "docs": [
+              "Master authority who can assign/revoke all roles"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "The Token-2022 stablecoin mint"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "preset",
+            "docs": [
+              "Preset level: 1 = SSS-1 (minimal), 2 = SSS-2 (compliant)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Emergency pause flag — blocks mint/burn/transfer when true"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "supply_cap",
+            "docs": [
+              "Optional maximum total supply (None = unlimited)"
+            ],
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "transfer_hook_program",
+            "docs": [
+              "Transfer hook program ID (Pubkey::default() for SSS-1)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "docs": [
+              "Token decimals"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "pending_master_authority",
+            "docs": [
+              "Pending master authority for two-step transfer (None = no pending transfer)"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "_reserved",
+            "docs": [
+              "Reserved for future upgrades"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "preset",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinPaused",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinUnpaused",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SupplyCapUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_cap",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "new_cap",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokensBurned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokensMinted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "minter",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokensSeized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "from",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "seizer",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WalletBlacklisted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "blacklister",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "WalletUnblacklisted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "blacklister",
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+}

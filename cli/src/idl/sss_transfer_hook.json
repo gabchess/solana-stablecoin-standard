@@ -1,0 +1,272 @@
+{
+  "address": "F1aUaKxYyCRWJLW7oeAiHNFk2WFJhS2NTm7LdGh8zuSz",
+  "metadata": {
+    "name": "sss_transfer_hook",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Solana Stablecoin Standard — Transfer Hook Program"
+  },
+  "instructions": [
+    {
+      "name": "initialize_extra_account_meta_list",
+      "docs": [
+        "Initialize the ExtraAccountMetaList PDA for a given mint.",
+        "Must be called once after the SSS-2 mint is created."
+      ],
+      "discriminator": [
+        92,
+        197,
+        174,
+        197,
+        41,
+        124,
+        19,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Payer for account creation."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "docs": [
+            "Authority — must be the master authority of the StablecoinConfig.",
+            "Prevents unauthorized parties from initializing the hook meta list."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "docs": [
+            "StablecoinConfig from sss-token program — validates caller is master authority."
+          ]
+        },
+        {
+          "name": "extra_account_meta_list",
+          "docs": [
+            "ExtraAccountMetaList PDA — stores the extra accounts Token-2022 must",
+            "resolve and pass to the Execute handler during transfer_checked.",
+            "",
+            "Seeds = [\"extra-account-metas\", mint]."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  120,
+                  116,
+                  114,
+                  97,
+                  45,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "The Token-2022 mint this hook serves."
+          ]
+        },
+        {
+          "name": "sss_token_program",
+          "docs": [
+            "The sss-token program whose PDAs we need to resolve."
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "StablecoinConfig",
+      "discriminator": [
+        127,
+        25,
+        244,
+        213,
+        1,
+        192,
+        101,
+        6
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "ExtraAccountMetaListInitialized",
+      "discriminator": [
+        111,
+        68,
+        225,
+        225,
+        90,
+        164,
+        193,
+        206
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "TransfersPaused",
+      "msg": "Transfers are paused"
+    },
+    {
+      "code": 6001,
+      "name": "SenderBlacklisted",
+      "msg": "Sender is blacklisted"
+    },
+    {
+      "code": 6002,
+      "name": "ReceiverBlacklisted",
+      "msg": "Receiver is blacklisted"
+    },
+    {
+      "code": 6003,
+      "name": "Unauthorized",
+      "msg": "Unauthorized — caller is not the master authority"
+    }
+  ],
+  "types": [
+    {
+      "name": "ExtraAccountMetaListInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "extra_account_count",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StablecoinConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "master_authority",
+            "docs": [
+              "Master authority who can assign/revoke all roles"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "The Token-2022 stablecoin mint"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "preset",
+            "docs": [
+              "Preset level: 1 = SSS-1 (minimal), 2 = SSS-2 (compliant)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Emergency pause flag — blocks mint/burn/transfer when true"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "supply_cap",
+            "docs": [
+              "Optional maximum total supply (None = unlimited)"
+            ],
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "transfer_hook_program",
+            "docs": [
+              "Transfer hook program ID (Pubkey::default() for SSS-1)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "decimals",
+            "docs": [
+              "Token decimals"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "PDA bump seed"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "pending_master_authority",
+            "docs": [
+              "Pending master authority for two-step transfer (None = no pending transfer)"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "_reserved",
+            "docs": [
+              "Reserved for future upgrades"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                31
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

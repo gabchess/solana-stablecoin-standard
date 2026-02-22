@@ -80,12 +80,23 @@ export function registerInitCommands(parent: Command): void {
       handleError(async function (this: Command) {
         const opts = this.opts();
         const globalOpts = this.parent!.parent!.opts();
-        const ctx = setupContext(globalOpts);
 
         printHeader("Initialize SSS-2 Stablecoin");
 
         const supplyCap = opts.supplyCap ? new BN(opts.supplyCap) : null;
         const hookProgramId = new PublicKey(opts.hookProgram);
+
+        // Build context with user-supplied hook program ID so the
+        // runtime Program object uses the correct address
+        const ctx = setupContext({ ...globalOpts, hookProgramId });
+
+        // Consistency check: ensure the constructed hookProgram matches
+        if (!ctx.hookProgram.programId.equals(hookProgramId)) {
+          throw new Error(
+            `Hook program ID mismatch: context has ${ctx.hookProgram.programId.toBase58()}, ` +
+            `but --hook-program is ${hookProgramId.toBase58()}`,
+          );
+        }
 
         const stablecoin = await SolanaStablecoin.createSss2(
           ctx.program,

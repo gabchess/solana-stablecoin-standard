@@ -183,6 +183,8 @@ export class SolanaStablecoin {
       .initializeExtraAccountMetaList()
       .accountsStrict({
         payer: authority,
+        authority,
+        config,
         extraAccountMetaList,
         mint: mintKeypair.publicKey,
         sssTokenProgram: program.programId,
@@ -614,6 +616,7 @@ export class SolanaStablecoin {
       .accountsStrict({
         authority,
         config: this.config,
+        mint: this.mint,
       })
       .rpc();
   }
