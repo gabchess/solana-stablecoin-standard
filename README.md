@@ -211,4 +211,4 @@ MIT
 
 ---
 
-Built by [@stablecoins-br](https://github.com/stablecoins-br) for Superteam Brazil.
+Built by [@gabchess](https://github.com/gabchess) for Superteam Brazil.
