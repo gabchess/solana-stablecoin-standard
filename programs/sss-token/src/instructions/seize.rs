@@ -33,11 +33,12 @@ pub struct Seize<'info> {
     /// Seizer authority — must hold the Seizer role.
     pub seizer: Signer<'info>,
 
-    /// StablecoinConfig — must be SSS-2 preset.
+    /// StablecoinConfig — must be SSS-2 preset and not paused.
     #[account(
         seeds = [STABLECOIN_SEED, config.mint.as_ref()],
         bump = config.bump,
         constraint = config.preset == 2 @ StablecoinError::Sss2Required,
+        constraint = !config.paused @ StablecoinError::Paused,
     )]
     pub config: Account<'info, StablecoinConfig>,
 
@@ -108,25 +109,28 @@ pub fn handler<'info>(ctx: Context<'_, '_, 'info, 'info, Seize<'info>>, amount: 
     let config_seeds: &[&[u8]] = &[STABLECOIN_SEED, mint_key.as_ref(), &bump_bytes];
 
     // ── Step 1: Thaw the source (blacklisted) account ──────────────────
-    // The account is frozen (blacklisted). We need to thaw it to transfer tokens.
+    // The account is typically frozen (blacklisted). Skip thaw if already thawed
+    // to avoid CPI error on double-thaw.
     // Config PDA = freeze authority.
-    let ix_thaw = thaw_account(
-        &ctx.accounts.token_program.key(),
-        &ctx.accounts.from_ata.key(),
-        &ctx.accounts.mint.key(),
-        &ctx.accounts.config.key(), // freeze authority = config PDA
-        &[],
-    )?;
+    if ctx.accounts.from_ata.is_frozen() {
+        let ix_thaw = thaw_account(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.from_ata.key(),
+            &ctx.accounts.mint.key(),
+            &ctx.accounts.config.key(), // freeze authority = config PDA
+            &[],
+        )?;
 
-    invoke_signed(
-        &ix_thaw,
-        &[
-            ctx.accounts.from_ata.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.config.to_account_info(),
-        ],
-        &[config_seeds],
-    )?;
+        invoke_signed(
+            &ix_thaw,
+            &[
+                ctx.accounts.from_ata.to_account_info(),
+                ctx.accounts.mint.to_account_info(),
+                ctx.accounts.config.to_account_info(),
+            ],
+            &[config_seeds],
+        )?;
+    }
 
     // ── Step 2: Transfer via permanent delegate ─────────────────────────
     // Config PDA = permanent delegate (set immutably at mint init).

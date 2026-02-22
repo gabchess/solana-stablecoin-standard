@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program::invoke;
+use anchor_lang::solana_program::program::{invoke, invoke_signed};
 use anchor_spl::token_2022::Token2022;
 use anchor_spl::token_interface::{Mint, TokenAccount};
 use spl_token_2022::instruction::burn_checked;
@@ -82,29 +82,57 @@ pub fn handler(ctx: Context<BurnTokens>, amount: u64) -> Result<()> {
         );
     }
 
-    let decimals = ctx.accounts.config.decimals;
+    let config = &ctx.accounts.config;
+    let decimals = config.decimals;
 
     // ── CPI: burn_checked ──────────────────────────────────────────────
-    // Authority is the signer — they must own the token account
-    // (or be a delegate / permanent delegate for SSS-2).
-    let ix = burn_checked(
-        &ctx.accounts.token_program.key(),
-        &ctx.accounts.from_ata.key(),
-        &ctx.accounts.mint.key(),
-        &authority_key, // token account authority
-        &[],            // no multisig signers
-        amount,
-        decimals,
-    )?;
+    if is_owner {
+        // Self-burn: authority is the token account owner, use regular invoke
+        let ix = burn_checked(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.from_ata.key(),
+            &ctx.accounts.mint.key(),
+            &authority_key,
+            &[],
+            amount,
+            decimals,
+        )?;
 
-    invoke(
-        &ix,
-        &[
-            ctx.accounts.from_ata.to_account_info(),
-            ctx.accounts.mint.to_account_info(),
-            ctx.accounts.authority.to_account_info(),
-        ],
-    )?;
+        invoke(
+            &ix,
+            &[
+                ctx.accounts.from_ata.to_account_info(),
+                ctx.accounts.mint.to_account_info(),
+                ctx.accounts.authority.to_account_info(),
+            ],
+        )?;
+    } else {
+        // Burner role: use config PDA as permanent delegate via invoke_signed
+        let config_key = config.key();
+        let mint_key = config.mint;
+        let bump_bytes = [config.bump];
+        let config_seeds: &[&[u8]] = &[STABLECOIN_SEED, mint_key.as_ref(), &bump_bytes];
+
+        let ix = burn_checked(
+            &ctx.accounts.token_program.key(),
+            &ctx.accounts.from_ata.key(),
+            &ctx.accounts.mint.key(),
+            &config_key, // permanent delegate = config PDA
+            &[],
+            amount,
+            decimals,
+        )?;
+
+        invoke_signed(
+            &ix,
+            &[
+                ctx.accounts.from_ata.to_account_info(),
+                ctx.accounts.mint.to_account_info(),
+                ctx.accounts.config.to_account_info(),
+            ],
+            &[config_seeds],
+        )?;
+    }
 
     // ── Emit event ─────────────────────────────────────────────────────
     emit!(TokensBurned {

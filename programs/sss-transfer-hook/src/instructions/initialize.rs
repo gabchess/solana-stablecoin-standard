@@ -9,6 +9,10 @@ use spl_tlv_account_resolution::{
 };
 use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
+use sss_token::state::StablecoinConfig;
+use crate::error::TransferHookError;
+use crate::events::ExtraAccountMetaListInitialized;
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -25,6 +29,17 @@ pub struct InitializeExtraAccountMetaList<'info> {
     /// Payer for account creation.
     #[account(mut)]
     pub payer: Signer<'info>,
+
+    /// Authority — must be the master authority of the StablecoinConfig.
+    /// Prevents unauthorized parties from initializing the hook meta list.
+    pub authority: Signer<'info>,
+
+    /// StablecoinConfig from sss-token program — validates caller is master authority.
+    #[account(
+        constraint = config.master_authority == authority.key() @ TransferHookError::Unauthorized,
+        constraint = config.mint == mint.key() @ TransferHookError::Unauthorized,
+    )]
+    pub config: Account<'info, StablecoinConfig>,
 
     /// ExtraAccountMetaList PDA — stores the extra accounts Token-2022 must
     /// resolve and pass to the Execute handler during transfer_checked.
@@ -189,10 +204,18 @@ pub fn handler(ctx: Context<InitializeExtraAccountMetaList>) -> Result<()> {
     let mut data = account_info.try_borrow_mut_data()?;
     ExtraAccountMetaList::init::<ExecuteInstruction>(&mut data, &extra_account_metas)?;
 
+    // ── Emit event ─────────────────────────────────────────────────────
+    emit!(ExtraAccountMetaListInitialized {
+        mint: ctx.accounts.mint.key(),
+        authority: ctx.accounts.authority.key(),
+        extra_account_count: extra_account_metas.len() as u8,
+    });
+
     msg!(
-        "ExtraAccountMetaList initialized for mint {} with {} extra accounts",
+        "ExtraAccountMetaList initialized for mint {} with {} extra accounts (authorized by {})",
         ctx.accounts.mint.key(),
-        extra_account_metas.len()
+        extra_account_metas.len(),
+        ctx.accounts.authority.key()
     );
 
     Ok(())

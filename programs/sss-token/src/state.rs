@@ -51,8 +51,10 @@ pub struct StablecoinConfig {
     pub decimals: u8,
     /// PDA bump seed
     pub bump: u8,
+    /// Pending master authority for two-step transfer (None = no pending transfer)
+    pub pending_master_authority: Option<Pubkey>,
     /// Reserved for future upgrades
-    pub _reserved: [u8; 64],
+    pub _reserved: [u8; 31],
 }
 
 impl StablecoinConfig {
@@ -65,7 +67,8 @@ impl StablecoinConfig {
         32 +  // transfer_hook_program
         1 +   // decimals
         1 +   // bump
-        64;   // _reserved
+        33 +  // pending_master_authority (Option<Pubkey>: 1 tag + 32 value)
+        31;   // _reserved
 
     pub const SEED_PREFIX: &'static [u8] = STABLECOIN_SEED;
 }

@@ -56,18 +56,25 @@ pub fn handler(
     let config_key = ctx.accounts.config.key();
 
     // Populate the RoleConfig account
+    // Only store mint_allowance for Minter role; force None for all other roles
+    let effective_allowance = if role == Role::Minter as u8 {
+        mint_allowance
+    } else {
+        None
+    };
+
     let role_config = &mut ctx.accounts.role_config;
     role_config.config = config_key;
     role_config.role = role;
     role_config.holder = holder;
-    role_config.mint_allowance = mint_allowance;
+    role_config.mint_allowance = effective_allowance;
     role_config.bump = ctx.bumps.role_config;
 
     emit!(RoleAssigned {
         config: config_key,
         role,
         holder,
-        mint_allowance,
+        mint_allowance: effective_allowance,
     });
 
     msg!(

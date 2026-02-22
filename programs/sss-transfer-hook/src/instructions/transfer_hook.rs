@@ -48,13 +48,24 @@ pub fn handler<'info>(
     let receiver_blacklist_info = &accounts[8];
 
     // ── Step 1: Check paused state ──────────────────────────────────────
-    // StablecoinConfig layout (Anchor account):
-    //   [0..8]    discriminator
-    //   [8..40]   master_authority (Pubkey)
-    //   [40..72]  mint (Pubkey)
-    //   [72]      preset (u8)
-    //   [73]      paused (bool)
+    // Raw byte read of StablecoinConfig (Anchor account with 8-byte discriminator).
     //
+    // Full byte offset layout of StablecoinConfig:
+    //   [0..8]     discriminator (Anchor account discriminator)
+    //   [8..40]    master_authority (Pubkey, 32 bytes)
+    //   [40..72]   mint (Pubkey, 32 bytes)
+    //   [72]       preset (u8, 1 byte)
+    //   [73]       paused (bool, 1 byte) ← read below
+    //   [74]       supply_cap tag (u8: 0=None, 1=Some)
+    //   [75..83]   supply_cap value (u64, 8 bytes, only if tag==1)
+    //   [83..115]  transfer_hook_program (Pubkey, 32 bytes)
+    //   [115]      decimals (u8, 1 byte)
+    //   [116]      bump (u8, 1 byte)
+    //   [117]      pending_master_authority tag (u8: 0=None, 1=Some)
+    //   [118..150] pending_master_authority value (Pubkey, only if tag==1)
+    //   [150..181] _reserved ([u8; 31])
+    //
+    // We only need byte 73 (paused) for the hook check.
     // If the config account doesn't have enough data, something is very wrong.
     let config_data = config_info.try_borrow_data()?;
     if config_data.len() < 74 {

@@ -203,7 +203,8 @@ pub fn handler(
     config.transfer_hook_program = Pubkey::default(); // No hook for SSS-1
     config.decimals = decimals;
     config.bump = config_bump;
-    config._reserved = [0u8; 64];
+    config.pending_master_authority = None;
+    config._reserved = [0u8; 31];
 
     // ── Step 8: Emit event ─────────────────────────────────────────────
     emit!(StablecoinInitialized {

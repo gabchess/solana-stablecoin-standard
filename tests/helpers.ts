@@ -303,28 +303,37 @@ export async function initializeSss2(
 
 /**
  * Initialize the ExtraAccountMetaList for the transfer hook.
+ * Requires the master authority to sign — validates caller is authorized.
  */
 export async function initializeExtraAccountMetaList(
   hookProgram: Program<SssTransferHook>,
   sssTokenProgram: Program<SssToken>,
   payer: Keypair,
-  mint: PublicKey
+  mint: PublicKey,
+  authority?: Keypair
 ): Promise<PublicKey> {
   const [extraAccountMetaList] = findExtraAccountMetaListPda(
     mint,
     hookProgram.programId
   );
+  const [configPda] = findConfigPda(mint, sssTokenProgram.programId);
+
+  // Authority defaults to payer if not provided (backwards compatible)
+  const auth = authority || payer;
+  const signers = authority && authority !== payer ? [payer, auth] : [payer];
 
   await hookProgram.methods
     .initializeExtraAccountMetaList()
     .accountsStrict({
       payer: payer.publicKey,
+      authority: auth.publicKey,
+      config: configPda,
       extraAccountMetaList,
       mint,
       sssTokenProgram: sssTokenProgram.programId,
       systemProgram: SystemProgram.programId,
     })
-    .signers([payer])
+    .signers(signers)
     .rpc();
 
   return extraAccountMetaList;

@@ -254,7 +254,8 @@ pub fn handler(
     config.transfer_hook_program = hook_program_id;
     config.decimals = decimals;
     config.bump = config_bump;
-    config._reserved = [0u8; 64];
+    config.pending_master_authority = None;
+    config._reserved = [0u8; 31];
 
     // ── Step 11: Emit event ─────────────────────────────────────────────
     emit!(StablecoinInitialized {

@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token_interface::Mint;
 
 use crate::{
     constants::STABLECOIN_SEED,
@@ -24,6 +25,12 @@ pub struct UpdateSupplyCap<'info> {
         constraint = config.master_authority == authority.key() @ StablecoinError::Unauthorized,
     )]
     pub config: Account<'info, StablecoinConfig>,
+
+    /// The stablecoin mint — used to validate current supply against new cap.
+    #[account(
+        constraint = mint.key() == config.mint @ StablecoinError::InvalidMint,
+    )]
+    pub mint: InterfaceAccount<'info, Mint>,
 }
 
 // ---------------------------------------------------------------------------
@@ -33,6 +40,14 @@ pub struct UpdateSupplyCap<'info> {
 pub fn handler(ctx: Context<UpdateSupplyCap>, new_cap: Option<u64>) -> Result<()> {
     let config = &mut ctx.accounts.config;
     let old_cap = config.supply_cap;
+
+    // Validate new cap is not below current supply
+    if let Some(cap) = new_cap {
+        require!(
+            ctx.accounts.mint.supply <= cap,
+            StablecoinError::SupplyCapExceeded
+        );
+    }
 
     config.supply_cap = new_cap;
 

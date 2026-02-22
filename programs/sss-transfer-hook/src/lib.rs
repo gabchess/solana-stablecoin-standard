@@ -3,6 +3,7 @@ use spl_discriminator::SplDiscriminate;
 use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
 pub mod error;
+pub mod events;
 pub mod instructions;
 
 use instructions::*;

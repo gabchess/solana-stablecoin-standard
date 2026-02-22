@@ -182,11 +182,11 @@ describe("Pause & Admin", () => {
 
   // ── transfer_master_authority ───────────────────────────────────
 
-  it("transfer_master_authority → new authority can sign, old cannot", async () => {
+  it("transfer_master_authority → two-step: initiate + accept", async () => {
     const newAuth = Keypair.generate();
     await airdrop(provider, newAuth.publicKey);
 
-    // Transfer from authority → newAuth
+    // Step 1: Initiate transfer (sets pending)
     let sig = await program.methods
       .transferMasterAuthority()
       .accountsStrict({
@@ -198,10 +198,31 @@ describe("Pause & Admin", () => {
       .rpc();
     await provider.connection.confirmTransaction(sig, "confirmed");
 
+    // Verify: master_authority unchanged, pending set
     let config = await program.account.stablecoinConfig.fetch(configPda);
+    expect(config.masterAuthority.toString()).to.equal(
+      authority.publicKey.toString()
+    );
+    expect(config.pendingMasterAuthority.toString()).to.equal(
+      newAuth.publicKey.toString()
+    );
+
+    // Step 2: Accept transfer (new authority signs)
+    sig = await program.methods
+      .acceptMasterAuthority()
+      .accountsStrict({
+        newAuthority: newAuth.publicKey,
+        config: configPda,
+      })
+      .signers([newAuth])
+      .rpc();
+    await provider.connection.confirmTransaction(sig, "confirmed");
+
+    config = await program.account.stablecoinConfig.fetch(configPda);
     expect(config.masterAuthority.toString()).to.equal(
       newAuth.publicKey.toString()
     );
+    expect(config.pendingMasterAuthority).to.be.null;
 
     // Old authority cannot do master-only actions (e.g. update_supply_cap)
     try {
@@ -210,6 +231,7 @@ describe("Pause & Admin", () => {
         .accountsStrict({
           authority: authority.publicKey,
           config: configPda,
+          mint: mint.publicKey,
         })
         .signers([authority])
         .rpc();
@@ -224,6 +246,7 @@ describe("Pause & Admin", () => {
       .accountsStrict({
         authority: newAuth.publicKey,
         config: configPda,
+        mint: mint.publicKey,
       })
       .signers([newAuth])
       .rpc();
@@ -232,7 +255,7 @@ describe("Pause & Admin", () => {
     config = await program.account.stablecoinConfig.fetch(configPda);
     expect(config.supplyCap.toNumber()).to.equal(200_000_000);
 
-    // Transfer back so subsequent tests still work
+    // Transfer back: initiate + accept
     sig = await program.methods
       .transferMasterAuthority()
       .accountsStrict({
@@ -241,6 +264,16 @@ describe("Pause & Admin", () => {
         newAuthority: authority.publicKey,
       })
       .signers([newAuth])
+      .rpc();
+    await provider.connection.confirmTransaction(sig, "confirmed");
+
+    sig = await program.methods
+      .acceptMasterAuthority()
+      .accountsStrict({
+        newAuthority: authority.publicKey,
+        config: configPda,
+      })
+      .signers([authority])
       .rpc();
     await provider.connection.confirmTransaction(sig, "confirmed");
   });
@@ -254,6 +287,7 @@ describe("Pause & Admin", () => {
       .accountsStrict({
         authority: authority.publicKey,
         config: configPda,
+        mint: mint.publicKey,
       })
       .signers([authority])
       .rpc();
@@ -306,6 +340,7 @@ describe("Pause & Admin", () => {
       .accountsStrict({
         authority: authority.publicKey,
         config: configPda,
+        mint: mint.publicKey,
       })
       .signers([authority])
       .rpc();
@@ -347,6 +382,7 @@ describe("Pause & Admin", () => {
         .accountsStrict({
           authority: pauserKeypair.publicKey,
           config: configPda,
+          mint: mint.publicKey,
         })
         .signers([pauserKeypair])
         .rpc();

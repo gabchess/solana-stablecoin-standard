@@ -21,11 +21,12 @@ pub struct Unblacklist<'info> {
     #[account(mut)]
     pub blacklister: Signer<'info>,
 
-    /// StablecoinConfig — must be SSS-2 preset.
+    /// StablecoinConfig — must be SSS-2 preset and not paused.
     #[account(
         seeds = [STABLECOIN_SEED, config.mint.as_ref()],
         bump = config.bump,
         constraint = config.preset == 2 @ StablecoinError::Sss2Required,
+        constraint = !config.paused @ StablecoinError::Paused,
     )]
     pub config: Account<'info, StablecoinConfig>,
 

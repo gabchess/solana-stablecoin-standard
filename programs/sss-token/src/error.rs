@@ -26,9 +26,6 @@ pub enum StablecoinError {
     #[msg("Role config does not belong to this stablecoin")]
     InvalidRoleConfig,
 
-    #[msg("Wallet is not blacklisted")]
-    NotBlacklisted,
-
     #[msg("Invalid mint for this stablecoin config")]
     InvalidMint,
 

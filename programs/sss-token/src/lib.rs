@@ -65,6 +65,10 @@ pub mod sss_token {
         instructions::transfer_master_authority::handler(ctx)
     }
 
+    pub fn accept_master_authority(ctx: Context<AcceptMasterAuthority>) -> Result<()> {
+        instructions::transfer_master_authority::accept_handler(ctx)
+    }
+
     pub fn update_supply_cap(
         ctx: Context<UpdateSupplyCap>,
         new_cap: Option<u64>,

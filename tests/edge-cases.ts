@@ -387,6 +387,7 @@ describe("Edge Cases", () => {
         .accountsStrict({
           authority: random.publicKey, // not master
           config: configPda1,
+          mint: mint1.publicKey,
         })
         .signers([random])
         .rpc();

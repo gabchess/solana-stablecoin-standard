@@ -10,4 +10,7 @@ pub enum TransferHookError {
 
     #[msg("Receiver is blacklisted")]
     ReceiverBlacklisted,
+
+    #[msg("Unauthorized — caller is not the master authority")]
+    Unauthorized,
 }
